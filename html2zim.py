@@ -5,19 +5,18 @@ from collections import OrderedDict
 import json
 import pdb
 import sys
+import os
 __help__ = """
 Converts html (output from OneNote) to Zim format.\n
 Usage html2zim.py <output.html>
 """
 
-if len(sys.argv) < 2:
+if len(sys.argv) < 2:  
   print(__help__)
   quit()
 
-
-
 FORMATTED_FILE = sys.argv[1] #"/home/edvard/edvard/www/html2zim/formatting.htm"
-DEFINITIONS_FILE = "definitions.json"
+DEFINITIONS_FILE = os.path.dirname(os.path.realpath(sys.argv[0]))+"/definitions.json"
 
 class Html2Zim:        
        
@@ -71,7 +70,7 @@ class Html2Zim:
             return  
 
         try:
-            contents = el.replace("\n", "")
+            contents = el.replace("\n", " ")
         except:
             import pdb;pdb.set_trace()
                 
@@ -104,8 +103,8 @@ class Html2Zim:
             self._buffer += contents
 
     def _saveBuffer(self):
-        if self._bufferName:
-            fn = self._bufferName + ".txt"
+        if self._buffer:
+            fn = self._bufferName.replace(" ","_") + ".txt"
             with open(fn, "a") as f:
                 f.write(self._buffer)
             print("Saved to " + fn)
