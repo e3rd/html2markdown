@@ -69,43 +69,63 @@ class Html2Zim:
                 self.loopEl(ch)              
             return  
 
-        try:
-            contents = el.replace("\n", " ")
+        try:            
+            el.sout = el.replace("\n", " ")            
+            el.sout = re.sub('\s+', ' ', el.sout) #.strip()
         except:
             import pdb;pdb.set_trace()
                 
         
-        definition, form = self._getFormat(el)                
+        #if "j" == el: import ipdb; ipdb.set_trace()
         
-        if self.prevStep[1] == definition:            
-            self.prevStep = self.prevStep[0]+contents, self.prevStep[1], self.prevStep[2],  self.prevStep[3]
+        el.definition, el.form = self._getFormat(el)                        
+        #el.parent.findPreviousSibling().contents
+        #elPrev.findParent("p") == el.findParent("p")
+        
+        #if self.prevStep[1] == el.definition:            
+        #    self.prevStep = self.prevStep[0]+contents, self.prevStep[1], self.prevStep[2],  self.prevStep[3]
+        if self.prevEl.definition == el.definition and el.bigParent == self.prevEl.bigParent:
+            self.prevEl.sout += el.sout
+            #self.prevStep = self.prevEl.sout, self.prevEl.definition, self.prevEl.form,  self.prevStep[3]
         else:
-            self.addToBuffer(self.prevStep)
-            self.prevStep = (contents, definition, form, el)
+            self.addToBuffer(self.prevEl) #
+            if el.bigParent != self.prevEl.bigParent:
+                self._buffer += "\n"
+            #else:
+            #    self._buffer +=  " "
+            #self.prevStep = (contents, definition, form, el)
+            self.prevEl = el
         
     
-    def addToBuffer(self, triple):
-        contents, definition, form, el = triple
-        if not contents:
+    def addToBuffer(self, el):
+        #contents, definition, form, el = triple
+        if not el.sout:
             return
         
-        if definition == "header":
+        if el.definition == "header":
             self._saveBuffer()
-            self._bufferName = contents
-            
-        #import pdb;pdb.set_trace()        
+            self._bufferName = el.sout                                    
         
-        if definition == "anchor":
-            self._buffer += (form).format(el.parent.attrs["href"], contents)
-        elif definition:        
-            self._buffer += (form).format(contents) 
-        else:                
-            self._buffer += contents
+        if el.definition == "anchor":
+            self._buffer += (el.form).format(el.parent.attrs["href"], el.sout)
+        elif el.definition:        
+            self._buffer += (el.form).format(el.sout) 
+        elif el.findParent("li"):
+            firstChild = next(el.findParent("li").children)
+            #import ipdb; ipdb.set_trace()
+            #if (hasattr(firstChild, "text") and firstChild.text == el) or firstChild == el:
+            if firstChild.text == el:
+                self._buffer += ("* {}").format(el.sout) 
+            else:
+                self._buffer += el.sout
+        else:
+            self._buffer += el.sout
+    
 
     def _saveBuffer(self):
         if self._buffer:
             fn = self._bufferName.replace(" ","_") + ".txt"
-            with open(fn, "a") as f:
+            with open(fn, "w") as f:
                 f.write(self._buffer)
             print("Saved to " + fn)
             self._buffer = ""
@@ -119,13 +139,21 @@ class Html2Zim:
         with open(DEFINITIONS_FILE) as data_file:    
             self.defs = json.load(data_file, object_pairs_hook=OrderedDict)
 
-        for el in soup.findAll("p"):
-            if el.text == "Created with Microsoft OneNote 2010\nOne place for all your notes and information":
+        #for el in soup.findAll("p") + soup.findAll("li"):
+        #import pdb;pdb.set_trace()
+        self.prevEl = soup.find("html")
+        for el in soup.findAll(text=True):
+            #print("Novy", el, el.parent.name)
+            
+            if el.strip("\n") == "":
+                continue
+            if el == "Created with Microsoft OneNote 2010\nOne place for all your notes and information":
                 continue  
-            self.prevStep = (False, False, False, False)
+            el.bigParent = el.findParent("li") or el.findParent("p") or el.findParent("div")                        
+            #self.prevStep = (False, False, False, False)
             self.loopEl(el)
-            self.addToBuffer(self.prevStep)
-            self._buffer += "\n"
+            #self.addToBuffer(self.prevEl)
+            #self._buffer += "\n"
         
         self._saveBuffer()
 
