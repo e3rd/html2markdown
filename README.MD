@@ -6,12 +6,12 @@ Look, this is not a magic box. I recommend to check the result every time. But i
 
 Installation
 =============
-* pip3 install --user beautifulsoup4
+* `pip3 install --user beautifulsoup4`
 * Download this.
 
 Usage
 =============
-* ./html2zim <your_html.html>
+* `./html2zim <your_html.html>`
 * Place the .txt output to your zim folder.
 
 Tip
