@@ -4,8 +4,7 @@ import re, json, ipdb, sys, os, traceback
 from bs4 import BeautifulSoup as bs
 from argparse import ArgumentParser
 from contextlib import contextmanager
-__help__ = """Converts html (output from OneNote) to Zim format.
-"""
+__help__ = """Converts html (output from OneNote) to Zim format."""
 
 @contextmanager
 def d():
@@ -128,11 +127,13 @@ class Html2Zim:
 
     def _saveBuffer(self):
         self._buffer = self._buffer.strip()
-        if self._buffer:
-            #ipdb.set_trace()
+        if self._buffer:            
             fn = os.path.dirname(self.formatted_file) + "/" + self._bufferName.replace(" ","_") + "." + self.extension
-            with open(fn, "w") as f:
+            #if os.path.isfile(fn) and fn not in self.createdFiles: print("Warning: File {} already exists, overwrite".format(fn))            
+            with open(fn, "a" if fn in self.createdFiles else "w") as f:
+                # for each header, we create a file but there might be multiple identical headers in the formatted file -> append
                 f.write(self._buffer)
+            self.createdFiles.add(fn)
             print("Saved to " + fn)
             self._buffer = ""
     
@@ -140,15 +141,21 @@ class Html2Zim:
         self.definitions_file = definitions_file
         self.formatted_file = formatted_file
         self.extension = extension
-        self._bufferName = "out"
+        self.createdFiles = set()
+        self._bufferName = os.path.splitext(os.path.basename(formatted_file))[0] #"out"
         self._buffer = ""        
         self.lastTd = None
         self.lastTr = None
         
-        with open(self.formatted_file) as f: #, encoding="ISO-8859-1"
-            soup = bs(f.read(), "lxml")
-        with open(self.definitions_file) as data_file:    
-            self.defs = json.load(data_file, object_pairs_hook=OrderedDict)        
+        try:
+            with open(self.formatted_file) as f: #, encoding="ISO-8859-1"
+                soup = bs(f.read(), "lxml")
+            with open(self.definitions_file) as data_file:    
+                self.defs = json.load(data_file, object_pairs_hook=OrderedDict)
+        except FileNotFoundError as e:
+            #print("CHYBA")
+            print(e.strerror + ": " + e.filename)            
+            quit(-1)
         self.prevEl = soup.find("html")
         for el in soup.findAll(text=True):                        
             if el.strip("\n") == "":
