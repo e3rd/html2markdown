@@ -1,11 +1,7 @@
 #!/usr/bin/env python3
-from bs4 import BeautifulSoup as bs
-import re
 from collections import OrderedDict
-import json
-import pdb
-import sys
-import os
+import re, json, ipdb, sys, os
+from bs4 import BeautifulSoup as bs
 __help__ = """
 Converts html (output from OneNote) to Zim format.\n
 Usage html2zim.py <output.html>
@@ -21,8 +17,8 @@ DEFINITIONS_FILE = os.path.dirname(os.path.realpath(sys.argv[0]))+"/definitions.
 class Html2Zim:        
        
         
-    def _getFormat(self, el):        
-        def _check(el, field):        
+    def _getFormat(self, el):                        
+        def _check(el, field):                               
             if not hasattr(el,"matches") or el.matches is None:
                 el.matches = {"font-size" : 0, "color" : 0, "font-style":0, "font-weight":0}
 
@@ -46,7 +42,7 @@ class Html2Zim:
         
         for definition, par in self.defs.items():                            
             accords = True                             
-
+            
             if not _check(el, "style"):
                 continue
 
@@ -64,63 +60,62 @@ class Html2Zim:
 
     def loopEl(self,el):        
         
-        if hasattr(el, "children"):        
-            for ch in el.children:
-                self.loopEl(ch)              
-            return  
-
-        try:            
-            el.sout = el.replace("\n", " ")            
-            el.sout = re.sub('\s+', ' ', el.sout) #.strip()
-        except:
-            import pdb;pdb.set_trace()
+        #if hasattr(el, "children"):        
+        #    for ch in el.children:                
+        #        self.loopEl(ch)              
+        #    return  
+        #if "spadv" in el: import ipdb; ipdb.set_trace()
+                   
+        el.sout = el.replace("\n", " ")            
+        el.sout = re.sub('\s+', ' ', el.sout) #.strip()                                                    
+        el.definition, el.form = self._getFormat(el)                                
                 
-        
-        #if "j" == el: import ipdb; ipdb.set_trace()
-        
-        el.definition, el.form = self._getFormat(el)                        
-        #el.parent.findPreviousSibling().contents
-        #elPrev.findParent("p") == el.findParent("p")
-        
-        #if self.prevStep[1] == el.definition:            
-        #    self.prevStep = self.prevStep[0]+contents, self.prevStep[1], self.prevStep[2],  self.prevStep[3]
-        if self.prevEl.definition == el.definition and el.bigParent == self.prevEl.bigParent:
-            self.prevEl.sout += el.sout
-            #self.prevStep = self.prevEl.sout, self.prevEl.definition, self.prevEl.form,  self.prevStep[3]
-        else:
+        if self.prevEl.definition is el.definition and \
+           el.myContext is self.prevEl.myContext and \
+           el.myTr is self.prevEl.myTr and \
+           el.myTd is self.prevEl.myTd:
+            self.prevEl.sout += el.sout            
+        else:   
             self.addToBuffer(self.prevEl) #
-            if el.bigParent != self.prevEl.bigParent:
+            
+            if self.prevEl.myTd and el.myTd is not self.prevEl.myTd:
+                self._buffer += "|"
+            
+            if el.myTr is not self.prevEl.myTr:
                 self._buffer += "\n"
-            #else:
-            #    self._buffer +=  " "
-            #self.prevStep = (contents, definition, form, el)
+                if el.myTr: self._buffer += "|"
+                
+            if el.myContext is not self.prevEl.myContext:
+                if self.prevEl.myTd and self.prevEl.myTd is el.myTd:
+                    # zim prints newline in a cell, however, we cant print nl directly due to table syntax
+                    self._buffer += "\\n"
+                elif not el.myTr:
+                    self._buffer += "\n"            
+
             self.prevEl = el
-        
+            
+                    
     
-    def addToBuffer(self, el):
-        #contents, definition, form, el = triple
+    def addToBuffer(self, el):        
         if not el.sout:
             return
         
         if el.definition == "header":
             self._saveBuffer()
-            self._bufferName = el.sout                                    
-        
+            self._bufferName = el.sout        
+         
         if el.definition == "anchor":
             self._buffer += (el.form).format(el.parent.attrs["href"], el.sout)
         elif el.definition:        
             self._buffer += (el.form).format(el.sout) 
         elif el.findParent("li"):
             firstChild = next(el.findParent("li").children)
-            #import ipdb; ipdb.set_trace()
-            #if (hasattr(firstChild, "text") and firstChild.text == el) or firstChild == el:
             if firstChild.text == el:
                 self._buffer += ("* {}").format(el.sout) 
             else:
                 self._buffer += el.sout
         else:
-            self._buffer += el.sout
-    
+            self._buffer += el.sout                        
 
     def _saveBuffer(self):
         if self._buffer:
@@ -133,30 +128,33 @@ class Html2Zim:
     def __init__(self):
         self._bufferName = "out"
         self._buffer = ""        
+        self.lastTd = None
+        self.lastTr = None
         
         with open(FORMATTED_FILE) as f:
             soup = bs(f.read(), "lxml")
         with open(DEFINITIONS_FILE) as data_file:    
-            self.defs = json.load(data_file, object_pairs_hook=OrderedDict)
-
-        #for el in soup.findAll("p") + soup.findAll("li"):
-        #import pdb;pdb.set_trace()
+            self.defs = json.load(data_file, object_pairs_hook=OrderedDict)        
         self.prevEl = soup.find("html")
-        for el in soup.findAll(text=True):
-            #print("Novy", el, el.parent.name)
-            
+        for el in soup.findAll(text=True):                        
             if el.strip("\n") == "":
                 continue
             if el == "Created with Microsoft OneNote 2010\nOne place for all your notes and information":
-                continue  
-            el.bigParent = el.findParent("li") or el.findParent("p") or el.findParent("div")                        
-            #self.prevStep = (False, False, False, False)
+                continue        
+            
+            el.myContext = el.findParent("li") or el.findParent("p") or el.findParent("div")
+            el.myTr = el.findParent("tr")
+            el.myTd = el.findParent("td")
             self.loopEl(el)
-            #self.addToBuffer(self.prevEl)
-            #self._buffer += "\n"
+        
+        # adds the last self.prevEl to the buffer
+        el = bs("<html><p>a</p></html>","lxml").findAll(text=True)[0]                
+        el.myContext = el.findParent("html")        
+        el.myTr = el.findParent("tr")
+        el.myTd = el.findParent("td")
+        self.loopEl(el) 
         
         self._saveBuffer()
-
         #print(self._buffer)
         
 if __name__ == "__main__":
