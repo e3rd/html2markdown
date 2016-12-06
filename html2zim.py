@@ -1,22 +1,22 @@
 #!/usr/bin/env python3
 from collections import OrderedDict
-import re, json, ipdb, sys, os
+import re, json, ipdb, sys, os, traceback
 from bs4 import BeautifulSoup as bs
-__help__ = """
-Converts html (output from OneNote) to Zim format.\n
-Usage html2zim.py <output.html>
+from argparse import ArgumentParser
+from contextlib import contextmanager
+__help__ = """Converts html (output from OneNote) to Zim format.
 """
 
-if len(sys.argv) < 2:  
-  print(__help__)
-  quit()
+@contextmanager
+def d():
+    try:
+        yield
+    except:
+        type, value, tb = sys.exc_info()
+        tb= traceback.print_exc()        
+        ipdb.post_mortem(tb)
 
-FORMATTED_FILE = sys.argv[1] #"/home/edvard/edvard/www/html2zim/formatting.htm"
-DEFINITIONS_FILE = os.path.dirname(os.path.realpath(sys.argv[0]))+"/definitions.json"
-
-class Html2Zim:        
-       
-        
+class Html2Zim:           
     def _getFormat(self, el):                        
         def _check(el, field):                               
             if not hasattr(el,"matches") or el.matches is None:
@@ -68,7 +68,10 @@ class Html2Zim:
                    
         el.sout = el.replace("\n", " ")            
         el.sout = re.sub('\s+', ' ', el.sout) #.strip()                                                    
-        el.definition, el.form = self._getFormat(el)                                
+        with d():
+            el.definition, el.form = self._getFormat(el)                                
+        
+        #ipdb.set_trace()
                 
         if self.prevEl.definition is el.definition and \
            el.myContext is self.prevEl.myContext and \
@@ -82,7 +85,13 @@ class Html2Zim:
                 self._buffer += "|"
             
             if el.myTr is not self.prevEl.myTr:
-                self._buffer += "\n"
+                self._buffer += "\n"                
+                if el.myTr and self.prevEl.myTr and el.findParent("table").tr == self.prevEl.myTr: # this was the first table row
+                    for i in range(len(self.prevEl.myTr.findChildren("td"))):
+                        self._buffer += "|----"
+                    self._buffer += "|\n"
+                    #ipdb.set_trace()
+                    #el.findParent("table")self.prevEl.myTr # this was the first row
                 if el.myTr: self._buffer += "|"
                 
             if el.myContext is not self.prevEl.myContext:
@@ -118,22 +127,27 @@ class Html2Zim:
             self._buffer += el.sout                        
 
     def _saveBuffer(self):
+        self._buffer = self._buffer.strip()
         if self._buffer:
-            fn = self._bufferName.replace(" ","_") + ".txt"
+            #ipdb.set_trace()
+            fn = os.path.dirname(self.formatted_file) + "/" + self._bufferName.replace(" ","_") + "." + self.extension
             with open(fn, "w") as f:
                 f.write(self._buffer)
             print("Saved to " + fn)
             self._buffer = ""
     
-    def __init__(self):
+    def __init__(self, definitions_file, formatted_file, extension):
+        self.definitions_file = definitions_file
+        self.formatted_file = formatted_file
+        self.extension = extension
         self._bufferName = "out"
         self._buffer = ""        
         self.lastTd = None
         self.lastTr = None
         
-        with open(FORMATTED_FILE) as f:
+        with open(self.formatted_file) as f: #, encoding="ISO-8859-1"
             soup = bs(f.read(), "lxml")
-        with open(DEFINITIONS_FILE) as data_file:    
+        with open(self.definitions_file) as data_file:    
             self.defs = json.load(data_file, object_pairs_hook=OrderedDict)        
         self.prevEl = soup.find("html")
         for el in soup.findAll(text=True):                        
@@ -157,5 +171,26 @@ class Html2Zim:
         self._saveBuffer()
         #print(self._buffer)
         
-if __name__ == "__main__":
-    Html2Zim()
+if __name__ == "__main__":    
+    parser = ArgumentParser()    
+    parser.add_argument('-z','--zim', help='use zim syntax',action="store_true")
+    parser.add_argument('-m','--markdown', help='use markdown syntax',action="store_true")
+    parser.add_argument('file', help="source file for reformatting", default="None")
+    if len(sys.argv) < 2:  
+        print(__help__)
+        parser.print_help()
+        quit()    
+    res = parser.parse_args()
+        
+    # load definition file
+    if res.zim: 
+        file, ext = "zim", "txt"    
+    else: 
+        file, ext = "markdown", "md" # markdown is default
+    def_file = os.path.dirname(os.path.realpath(sys.argv[0]))+"/definitions/"+file+".json"
+    if not os.path.isfile(def_file):
+         print("Definition file doesnt exist at " + def_file)
+         quit()        
+
+    # launch reformatting
+    Html2Zim(def_file, res.file, ext)

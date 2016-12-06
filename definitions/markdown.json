@@ -1,0 +1,80 @@
+{
+    "header": {
+    "style":{      
+        "font-size":"17.0pt"
+        },
+        "FORMAT": "# {}"
+        } ,
+    "head1": {
+      "parent-style":{
+        "font-size":"16.0pt",
+        "color":"#17365D"
+        },
+        "style":{
+	  "font-weight": "bold"
+        },
+       
+        "FORMAT": "# {}"
+        } ,
+    "head2": {
+    "parent-style":{
+        "font-size":"13.0pt",
+        "color":"#366092"},
+        "style":{
+	  "font-weight": "bold"
+        },
+        "FORMAT": "## {}"
+        } ,
+        "head4": {
+    "parent-style":{
+        "font-size":"11.0pt",
+        "color":"#366092"},
+        "style":{
+	  "font-weight": "bold",
+	  "font-style":"italic"
+        },
+        "FORMAT": "### {}"
+        } ,
+    "head3": {
+    "parent-style":{
+        "font-size":"11.0pt",
+        "color":"#366092"},      
+        "style":{
+	  "font-weight": "bold"
+        },
+        "FORMAT": "#### {} ####"
+        } ,
+    
+    "head5": {
+    "style":{
+        "font-size":"11.0pt",
+        "color":"#366092"},
+        "FORMAT": "##### {} #####"
+        } ,
+    "head6": {
+    "parent-style":{
+        "font-size":"11.0pt",
+        "color":"#366092"
+        },
+        "style":{	  
+	  "font-style":"italic"
+        },        
+        "FORMAT": "###### {} ######"
+        } ,
+    "bold":{
+      "style":{
+        "font-weight":"bold"
+        },
+        "FORMAT": "**{}**"
+    },
+    "italic":{
+    "style":{
+        "font-style":"italic"
+        },
+        "FORMAT": "*{}*"
+    },
+    "anchor":{
+      "name": "a",
+      "FORMAT": "[{1}]({0})"
+    }
+}
