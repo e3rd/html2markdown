@@ -76,5 +76,9 @@
     "anchor":{
       "name": "a",
       "FORMAT": "[{1}]({0})"
+    },
+    "stupid-nested-anchor":{
+      "parent-name": "a",
+      "FORMAT": "[[{1}|{0}]]"
     }
 }
