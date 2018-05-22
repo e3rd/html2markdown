@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from collections import OrderedDict
-import re, json, ipdb, sys, os, traceback
+import re, json, sys, os, traceback
 from bs4 import BeautifulSoup as bs
 from argparse import ArgumentParser
 from contextlib import contextmanager
@@ -8,14 +8,6 @@ from subprocess import run, DEVNULL
 from time import time
 __help__ = """Converts html (output from OneNote) to Zim format."""
 
-@contextmanager
-def d():
-    try:
-        yield
-    except:
-        type, value, tb = sys.exc_info()
-        tb= traceback.print_exc()        
-        ipdb.post_mortem(tb)
 
 class Html2Markdown:           
     def _getFormat(self, el):                        
@@ -53,7 +45,13 @@ class Html2Markdown:
             if accords and "name" in par:
                 accords = (el.parent.name == par["name"])
             if accords and "parent-name" in par:
-                accords = (el.parent.parent.name == par["parent-name"])          
+                try:
+                    accords = (el.parent.parent.name == par["parent-name"])
+                except:
+                    try: # this is a blind try #1
+                        accords = (el.parent.name == par["parent-name"])
+                    except:
+                        continue
 
             if not accords:
                 continue            
@@ -71,8 +69,13 @@ class Html2Markdown:
                    
         el.sout = el.replace("\n", " ")            
         el.sout = re.sub('\s+', ' ', el.sout) #.strip()                                                    
-        with d():
-            el.definition, el.form = self._getFormat(el)                                
+        try:
+            el.definition, el.form = self._getFormat(el)
+        except:
+            print("Something bad happened. Maybe OneNote changed format or something. You'll find yourself in a debugger session.")
+            type, value, tb = sys.exc_info()
+            tb= traceback.print_exc()        
+            ipdb.post_mortem(tb)            
         
         #ipdb.set_trace()
                 
